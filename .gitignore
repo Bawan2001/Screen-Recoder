@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Project - Don't commit recordings
+recordings/*.webm
+recordings/*.enc
+recordings/*.mp4
+recordings/metadata.db
+recordings/metadata.json
+
+# Keep recordings folder but ignore contents
+!recordings/.gitkeep
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
