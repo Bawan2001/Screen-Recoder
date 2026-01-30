@@ -530,7 +530,7 @@ class ScreenRecorder {
                     </div>
                     <div class="recording-info">
                         <div class="recording-name">
-                            ${recording.filename}
+                            ${recording.display_name || recording.filename}
                             ${recording.encrypted ? '<span class="lock-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span>' : ''}
                         </div>
                         <div class="recording-meta">
@@ -540,22 +540,22 @@ class ScreenRecorder {
                     </div>
                     <div class="recording-actions">
                         ${recording.encrypted ? `
-                            <button class="btn btn-purple" onclick="recorder.downloadEncrypted('${recording.filename}')">
+                            <button class="btn btn-purple" title="Download Encrypted" onclick="recorder.downloadEncrypted('${recording.filename}')">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <rect x="3" y="11" width="18" height="11" rx="2"></rect>
                                     <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                                 </svg>
                             </button>
                         ` : `
-                            <a href="/recordings/${recording.filename}" class="btn btn-success" download>
+                            <button class="btn btn-success" title="Download" onclick="recorder.handleDownload('${recording.filename}')">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                                     <polyline points="7 10 12 15 17 10"></polyline>
                                     <line x1="12" y1="15" x2="12" y2="3"></line>
                                 </svg>
-                            </a>
+                            </button>
                         `}
-                        <button class="btn btn-danger" onclick="recorder.deleteRecording('${recording.filename}')">
+                        <button class="btn btn-danger" title="Delete" onclick="recorder.deleteRecording('${recording.filename}')">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="3 6 5 6 21 6"></polyline>
                                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -567,6 +567,19 @@ class ScreenRecorder {
 
         } catch (err) {
             console.error('Error loading recordings:', err);
+        }
+    }
+
+    handleDownload(filename) {
+        if (filename.startsWith('http')) {
+            window.open(filename, '_blank');
+        } else {
+            const a = document.createElement('a');
+            a.href = `/recordings/${filename}`;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         }
     }
 
