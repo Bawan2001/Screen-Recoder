@@ -5,7 +5,6 @@ A modern, unlimited screen recording web application built with Python Flask.
 ![Python](https://img.shields.io/badge/Python-3.8+-3776AB?logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-2.0+-000000?logo=flask&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
-![Python CI](https://github.com/Bawan2001/Screen-Recoder-/actions/workflows/ci.yml/badge.svg)
 
 ## ✨ Features
 
