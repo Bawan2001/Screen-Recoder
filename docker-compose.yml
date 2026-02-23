@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  screen-recorder:
+    build: .
+    container_name: screen-recorder-pro
+    ports:
+      - "5000:5000"
+    volumes:
+      - recordings_data:/app/recordings
+    env_file:
+      - .env
+    restart: unless-stopped
+
+volumes:
+  recordings_data:

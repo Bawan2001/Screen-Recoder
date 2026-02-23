@@ -5,6 +5,7 @@ A modern, unlimited screen recording web application built with Python Flask.
 ![Python](https://img.shields.io/badge/Python-3.8+-3776AB?logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-2.0+-000000?logo=flask&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
+![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)
 
 ## ✨ Features
 
@@ -46,6 +47,48 @@ A modern, unlimited screen recording web application built with Python Flask.
    ```
    http://localhost:5000
    ```
+
+## 🐳 Run with Docker
+
+### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
+
+### Using Docker Compose (Recommended)
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/Bawan2001/Screen-Recoder-.git
+   cd Screen-Recoder-
+   ```
+
+2. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your Cloudinary credentials (optional)
+   ```
+
+3. **Build and run**
+   ```bash
+   docker-compose up --build
+   ```
+
+4. **Open in browser**
+   ```
+  
+   ```
+
+5. **Stop the container**
+   ```bash
+   docker-compose down
+   ```
+
+### Using Dockerfile Directly
+
+```bash
+docker build -t screen-recorder-pro .
+docker run -p 5000:5000 --env-file .env screen-recorder-pro
+``` http://localhost:5000
 
 ## 📁 Project Structure
 
