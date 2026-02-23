@@ -14,8 +14,22 @@ from werkzeug.utils import secure_filename
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+import cloudinary
+import cloudinary.uploader
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = Flask(__name__)
+
+# Cloudinary Configuration
+cloudinary.config(
+    cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'),
+    api_key=os.getenv('CLOUDINARY_API_KEY'),
+    api_secret=os.getenv('CLOUDINARY_API_SECRET'),
+    secure=True
+)
 
 # Configuration
 UPLOAD_FOLDER = 'recordings'
@@ -103,7 +117,7 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload_recording():
-    """Handle recording upload with optional encryption"""
+    """Handle recording upload with optional encryption and cloud storage"""
     if 'video' not in request.files:
         return jsonify({'error': 'No video file provided'}), 400
     
@@ -125,45 +139,72 @@ def upload_recording():
             # Encrypt the file
             encrypted_data, salt_b64 = encrypt_file(file_data, password)
             filename = f'recording_{timestamp}.enc'
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             
-            with open(filepath, 'wb') as f:
-                f.write(encrypted_data)
+            # Check if Cloudinary is configured
+            if os.getenv('CLOUDINARY_CLOUD_NAME'):
+                # Upload to Cloudinary as a raw file (since it's encrypted)
+                upload_result = cloudinary.uploader.upload(
+                    io.BytesIO(encrypted_data),
+                    resource_type="raw",
+                    public_id=filename,
+                    folder="recordings"
+                )
+                file_url = upload_result.get('secure_url')
+            else:
+                # Save locally
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                with open(filepath, 'wb') as f:
+                    f.write(encrypted_data)
+                file_url = None
             
             # Store metadata in database
             password_hash = hashlib.sha256(password.encode()).hexdigest()
             cursor.execute('''
                 INSERT INTO recordings (filename, original_name, file_size, encrypted, password_hash, salt)
                 VALUES (?, ?, ?, ?, ?, ?)
-            ''', (filename, file.filename, len(encrypted_data), True, password_hash, salt_b64))
+            ''', (file_url or filename, file.filename, len(encrypted_data), True, password_hash, salt_b64))
             
             conn.commit()
             
             return jsonify({
                 'success': True,
                 'filename': filename,
+                'url': file_url,
                 'encrypted': True,
                 'message': 'Recording saved with password protection!'
             })
         else:
             # Save without encryption
             filename = f'recording_{timestamp}.webm'
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             
-            with open(filepath, 'wb') as f:
-                f.write(file_data)
+            if os.getenv('CLOUDINARY_CLOUD_NAME'):
+                # Upload to Cloudinary as video
+                upload_result = cloudinary.uploader.upload(
+                    io.BytesIO(file_data),
+                    resource_type="video",
+                    public_id=filename.split('.')[0],
+                    folder="recordings"
+                )
+                file_url = upload_result.get('secure_url')
+            else:
+                # Save locally
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                with open(filepath, 'wb') as f:
+                    f.write(file_data)
+                file_url = None
             
             # Store metadata in database
             cursor.execute('''
                 INSERT INTO recordings (filename, original_name, file_size, encrypted)
                 VALUES (?, ?, ?, ?)
-            ''', (filename, file.filename, len(file_data), False))
+            ''', (file_url or filename, file.filename, len(file_data), False))
             
             conn.commit()
             
             return jsonify({
                 'success': True,
                 'filename': filename,
+                'url': file_url,
                 'encrypted': False,
                 'message': 'Recording saved successfully!'
             })
@@ -206,8 +247,13 @@ def list_recordings():
         else:
             date_str = ''
         
+        filename = row['filename']
+        # If it's a URL, get just the name for displaying
+        display_name = filename.split('/')[-1] if 'http' in filename else filename
+        
         recordings.append({
-            'filename': row['filename'],
+            'filename': filename,
+            'display_name': display_name,
             'size': size_str,
             'date': date_str,
             'encrypted': bool(row['encrypted'])
@@ -217,9 +263,10 @@ def list_recordings():
     return jsonify(recordings)
 
 
-@app.route('/recordings/<filename>')
+@app.route('/recordings/<path:filename>')
 def download_recording(filename):
     """Download a specific recording (unencrypted only)"""
+    # Use path:filename to handle URLs if passed
     conn = get_db()
     cursor = conn.cursor()
     
@@ -227,13 +274,20 @@ def download_recording(filename):
     row = cursor.fetchone()
     conn.close()
     
-    if row and row['encrypted']:
+    if not row:
+        return jsonify({'error': 'File not found'}), 404
+        
+    if row['encrypted']:
         return jsonify({'error': 'This file is password protected. Use /decrypt endpoint.'}), 403
+    
+    if 'http' in filename:
+        from flask import redirect
+        return redirect(filename)
     
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename, as_attachment=True)
 
 
-@app.route('/decrypt/<filename>', methods=['POST'])
+@app.route('/decrypt/<path:filename>', methods=['POST'])
 def decrypt_recording(filename):
     """Decrypt and download a password-protected recording"""
     password = request.json.get('password', '')
@@ -260,11 +314,18 @@ def decrypt_recording(filename):
         return jsonify({'error': 'Incorrect password'}), 401
     
     # Decrypt file
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    
     try:
-        with open(filepath, 'rb') as f:
-            encrypted_data = f.read()
+        if 'http' in filename:
+            # Fetch from Cloudinary
+            import requests
+            response = requests.get(filename)
+            encrypted_data = response.content
+            download_name = filename.split('/')[-1].replace('.enc', '.webm')
+        else:
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            with open(filepath, 'rb') as f:
+                encrypted_data = f.read()
+            download_name = filename.replace('.enc', '.webm')
         
         decrypted_data = decrypt_file(encrypted_data, password)
         
@@ -273,10 +334,10 @@ def decrypt_recording(filename):
             io.BytesIO(decrypted_data),
             mimetype='video/webm',
             as_attachment=True,
-            download_name=filename.replace('.enc', '.webm')
+            download_name=download_name
         )
     except Exception as e:
-        return jsonify({'error': 'Decryption failed'}), 500
+        return jsonify({'error': f'Decryption failed: {str(e)}'}), 500
 
 
 @app.route('/verify-password/<filename>', methods=['POST'])
