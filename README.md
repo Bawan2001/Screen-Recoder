@@ -45,7 +45,7 @@ A modern, unlimited screen recording web application built with Python Flask.
 
 4. **Open in browser**
    ```
-   http://localhost:5000
+   http://localhost:8080
    ```
 
 ## 🐳 Run with Docker
@@ -87,7 +87,7 @@ A modern, unlimited screen recording web application built with Python Flask.
 
 ```bash
 docker build -t screen-recorder-pro .
-docker run -p 8080:5000 --env-file .env screen-recorder-pro
+docker run -p 8080:8080 --env-file .env screen-recorder-pro
 ```
 
 4. **Open in browser**

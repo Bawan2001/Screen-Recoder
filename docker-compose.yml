@@ -5,7 +5,7 @@ services:
     build: .
     container_name: screen-recorder-pro
     ports:
-      - "8080:5000"
+      - "8080:8080"
     volumes:
       - recordings_data:/app/recordings
     env_file:

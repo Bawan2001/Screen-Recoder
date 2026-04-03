@@ -412,7 +412,7 @@ def get_stats():
 
 if __name__ == '__main__':
     print("Screen Recorder Pro is running!")
-    print("Open http://localhost:5000 in your browser")
+    print("Open http://localhost:8080 in your browser")
     print(f"Database: {DATABASE_FILE}")
     print(f"Recordings folder: {UPLOAD_FOLDER}")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=8080)
